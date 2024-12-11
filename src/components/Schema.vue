@@ -1,7 +1,7 @@
 <template>
     <!-- Indicator In -->
     <TankIndicator id="TK-001" :content="{ title: 'TK-001' }" class="left-0 top-0" />
-    
+    <TankIndicator id="TK-002" :content="{ title: 'TK-002' }" class="right-0 top-16" />
     <PumpIndicator :id="1" :content="{ title: 'P-001' }" class="-top-4 inset-x-60" />
     <PumpIndicator :id="2" :content="{ title: 'P-002' }" class="top-28 inset-x-60" />
     <PumpIndicator :id="3" :content="{ title: 'P-003' }" class="bottom-3 inset-x-60" />
@@ -44,7 +44,7 @@
             </svg>
         </span>
     </div>
-    <div class="w-[23%] h-[5%] bg-water absolute right-20 top-28 rounded-r-xl flex items-center px-4">
+    <div class="w-[28%] h-[5%] bg-water absolute right-12 top-28 rounded-r-xl flex items-center px-4">
         <span class="w-full running-animationX inversex">
             <svg class="" width="18" height="8" viewBox="0 0 25 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
