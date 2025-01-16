@@ -4,6 +4,7 @@
         'bg-neutral text-black': pumpStatus === 'off'
     }">
         <h1 class="text-xl font-medium">{{ content.title }}</h1>
+        <p class="text-sm">Control Mode: {{ pumpControlMode }}</p>
         <section class="flex w-full justify-between">
             <img class="bg-cover" :class="{ 'animate-pump': pumpStatus === 'on' }" src="/src/assets/img/Pump.png"
                 alt="Pompa">
@@ -20,50 +21,73 @@ export default {
             type: Object,
             required: true,
             properties: {
-                title: String,
+                title: String
             }
         }
     },
     data() {
         return {
             pumpStatus: 'off', // Default status
-            apiUrl: `${import.meta.env.VITE_API_BASE_URL}pumpcontrol`, // Replace with your API URL
-        }
+            pumpControlMode: 'AUTOMATIC', // Default control mode
+            apiUrl: `${import.meta.env.VITE_API_BASE_URL}pumpcontrol` // API URL for pump control
+        };
     },
     mounted() {
-        // Fetch API when the component is mounted
         this.fetchPumpStatus();
-        // Refresh data every 15 seconds
+        // Refresh pump status every 15 seconds
         setInterval(this.fetchPumpStatus, 15000);
     },
     methods: {
-        // Fetch pump status from the API
         async fetchPumpStatus() {
             try {
                 const response = await fetch(this.apiUrl);
                 const data = await response.json();
 
-                // Sort pumps to ensure consistent ordering
-                const sortedPumps = data.sort((a, b) => {
-                    const aNumber = parseInt(a.pumpId.match(/\d+$/)[0]);
-                    const bNumber = parseInt(b.pumpId.match(/\d+$/)[0]);
-                    return aNumber - bNumber;
-                });
-
-                // Map pumps to incremental IDs
-                const pumpData = sortedPumps[this.id - 1]; // Array index starts at 0, while id starts at 1
-
+                const pumpData = data.find(pump => pump.pumpId === `PUMP-ESP32-${this.id.toString().padStart(2, '0')}`);
                 if (pumpData) {
-                    // Update the pump status based on the backend response
-                    this.pumpStatus = pumpData.status.toLowerCase(); // Expecting 'on' or 'off'
-                } else {
-                    console.warn(`Pump with incremental ID ${this.id} not found`);
-                    this.pumpStatus = 'off'; // Default to 'off' if pump not found
+                    this.pumpStatus = pumpData.status.toLowerCase(); // Update pump status
+                    this.pumpControlMode = pumpData.controlMode; // Update control mode
+                    console.log(`Pump ${this.id}: Status updated to ${this.pumpStatus}`);
                 }
             } catch (error) {
                 console.error("Error fetching pump status:", error);
             }
+        },
+        setPumpStatus(activate) {
+            if (this.pumpStatus === (activate ? 'on' : 'off')) {
+                return; // No changes needed
+            }
+
+            this.pumpStatus = activate ? 'on' : 'off';
+            this.pumpControlMode = activate ? 'MANUAL' : 'AUTOMATIC';
+
+            // Update server with new status
+            this.updatePumpStatus();
+        },
+        async updatePumpStatus() {
+            const pumpId = `PUMP-ESP32-${this.id.toString().padStart(2, '0')}`;
+            const baseUrl = `${this.apiUrl}/${pumpId}/toggle`;
+            const action = this.pumpStatus === 'on' ? 'ON' : 'OFF';
+
+            try {
+                const response = await fetch(baseUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ action })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to update pump status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                console.log(`Pump ${this.id} status updated: ${result.message}`);
+            } catch (error) {
+                console.error(`Error updating pump ${this.id} status:`, error);
+            }
         }
     }
-}
+};
 </script>

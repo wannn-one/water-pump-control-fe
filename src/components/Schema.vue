@@ -1,11 +1,14 @@
 <template>
     <!-- Indicator In -->
+    <!-- Tank Indicators -->
     <TankIndicator id="TK-001" :content="{ title: 'TK-001' }" class="left-0 top-0" />
     <TankIndicator id="TK-002" :content="{ title: 'TK-002' }" class="right-0 top-16" />
-    <PumpIndicator :id="1" :content="{ title: 'P-001' }" class="-top-4 inset-x-60" />
-    <PumpIndicator :id="2" :content="{ title: 'P-002' }" class="top-28 inset-x-60" />
-    <PumpIndicator :id="3" :content="{ title: 'P-003' }" class="bottom-3 inset-x-60" />
-    <PumpIndicator :id="4" :content="{ title: 'P-004' }" class="bottom-14 left-8 inset-x-60" />
+
+    <!-- Pump Indicators -->
+    <PumpIndicator ref="pump1" :id="1" :content="{ title: 'P-001' }" class="-top-4 inset-x-60" />
+    <PumpIndicator ref="pump2" :id="2" :content="{ title: 'P-002' }" class="top-28 inset-x-60" />
+    <PumpIndicator ref="pump3" :id="3" :content="{ title: 'P-003' }" class="bottom-3 inset-x-60" />
+    <PumpIndicator ref="pump4" :id="4" :content="{ title: 'P-004' }" class="bottom-14 left-8 inset-x-60" />
     <!-- Indicator Out -->
 
     <!-- Flow Water In -->
@@ -92,7 +95,6 @@
         </span>
     </div>
     <!-- Flow Water In -->
-
 </template>
 <script>
 import TankIndicator from './indicators/TankIndicator.vue';
@@ -103,11 +105,56 @@ export default {
     components: {
         TankIndicator,
         PumpIndicator
+    },
+    data() {
+        return {
+            apiUrl: `${import.meta.env.VITE_API_BASE_URL}waterlevel` // URL for water level data
+        };
+    },
+    mounted() {
+        this.fetchWaterLevelData();
+        // Refresh water level data every 15 seconds
+        setInterval(this.fetchWaterLevelData, 15000);
+    },
+    methods: {
+        async fetchWaterLevelData() {
+            try {
+                const response = await fetch(this.apiUrl);
+                const data = await response.json();
+
+                if (data.length > 0) {
+                    const { sensorCondition } = data[0]; // Extract sensor condition
+                    console.log(`Sensor condition: ${sensorCondition}`);
+                    this.automatePumps(sensorCondition); // Execute automation logic
+                } else {
+                    console.warn("No water level data available");
+                }
+            } catch (error) {
+                console.error("Error fetching water level data:", error);
+            }
+        },
+        automatePumps(sensorCondition) {
+            const pumpStatuses = {
+                NORMAL: [true, false, false, false], // Only Pump 1
+                SIAGA: [true, true, false, false],  // Pump 1 and 2
+                BAHAYA: [true, true, true, false]  // Pump 1, 2, and 3
+            };
+
+            const statuses = pumpStatuses[sensorCondition] || [false, false, false, false];
+            console.log(`Statuses: ${statuses}`);
+
+            statuses.forEach((shouldActivate, index) => {
+                const pumpRef = this.$refs[`pump${index + 1}`];
+                if (pumpRef) {
+                    pumpRef.setPumpStatus(shouldActivate); // Update pump status via PumpIndicator
+                    pumpRef.fetchPumpStatus(); // Sync the toggle with server state
+                }
+            });
+        }
     }
-
-
-}
+};
 </script>
+
 <style scoped>
 .running-animationX {
     animation: runningx 4s infinite linear;
