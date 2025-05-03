@@ -13,7 +13,7 @@ let fetchInterval = null;
 
 const fetchWaterLevels = async (page = 1, limit = 10) => {
   try {
-    const response = await fetch(`http://103.127.137.40/api/waterlevel/history/all?page=${page}&limit=${limit}`);
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}waterlevel/history/all?page=${page}&limit=${limit}`);
     const result = await response.json();
     waterLevels.value = result.data;
     currentPage.value = result.pagination.currentPage;
@@ -24,7 +24,7 @@ const fetchWaterLevels = async (page = 1, limit = 10) => {
 };
 
 const downloadCSV = () => {
-  window.location.href = "http://103.127.137.40/api/waterlevel/history/download/csv";
+  window.location.href = `${import.meta.env.VITE_API_BASE_URL}waterlevel/history/download/csv`;
 };
 
 onMounted(() => {

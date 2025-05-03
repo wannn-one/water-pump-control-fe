@@ -106,21 +106,21 @@ window.addEventListener('load', () => {
             const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}waterlevel`);
             const data = await response.json();
             console.log(data);
-        
+
             // Asumsikan hanya satu sensor pada API respons, gunakan lastReading dan sensorCondition
             if (data.length > 0) {
                 const { lastReading, sensorCondition } = data[0]; // Ambil lastReading dan sensorCondition dari sensor pertama
                 updateSensorCondition(sensorCondition); // Perbarui tampilan kondisi sensor
                 return lastReading !== null ? lastReading : 0; // Jika lastReading null, kembalikan 0
             }
-        
+
             updateSensorCondition("UNKNOWN"); // Tampilkan UNKNOWN jika tidak ada data
             return 0; // Jika tidak ada data, kembalikan 0
         } catch (error) {
             console.error('Error fetching new data point:', error);
             updateSensorCondition("ERROR"); // Tampilkan ERROR jika fetch gagal
             return 0; // Mengembalikan 0 jika terjadi error
-        }  
+        }
     }
 
     function updateSensorCondition(condition) {
