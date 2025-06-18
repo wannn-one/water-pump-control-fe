@@ -1,93 +1,67 @@
 <template>
-    <section class="bg-card w-fit h-fit border rounded-xl p-4 drop-shadow-xl absolute z-50 scale-75" :id="id" :class="{
-        'bg-ongreen text-white': pumpStatus === 'on',
-        'bg-neutral text-black': pumpStatus === 'off'
-    }">
-        <h1 class="text-xl font-medium">{{ content.title }}</h1>
-        <p class="text-sm">Control Mode: {{ pumpControlMode }}</p>
-        <section class="flex w-full justify-between">
-            <img class="bg-cover" :class="{ 'animate-pump': pumpStatus === 'on' }" src="/src/assets/img/Pump.png"
-                alt="Pompa">
+    <section class="bg-card w-fit h-fit border rounded-xl p-5 drop-shadow-xl absolute z-10 scale-50" :class="{
+        'bg-ongreen text-white': isPumpOn,
+        'bg-neutral text-black': !isPumpOn
+    }"
+    style="transform: translateX(-60%) translateY(10%);"
+    >
+        <h1 class="text-sm font-medium">{{ pump.pumpId }}</h1>
+        <section class="flex w-full justify-between mt-1">
+            <img class="bg-cover h-12" :class="{ 'animate-pump': isPumpOn }" src="/src/assets/img/Pump.png" alt="Pompa">
         </section>
     </section>
 </template>
 
-<script>
-export default {
-    name: 'PumpIndicator',
-    props: {
-        id: Number, // Incremental ID starting from 1
-        content: {
-            type: Object,
-            required: true,
-            properties: {
-                title: String
-            }
-        }
+<script setup>
+import { computed } from 'vue';
+
+// 1. Komponen menerima dua props dari induknya:
+//    - 'pump': Objek yang berisi info spesifik pompa (ID dan status)
+//    - 'controlMode': String yang berisi mode kontrol sistem saat ini
+const props = defineProps({
+    pump: {
+        type: Object,
+        required: true,
+        // Contoh: { pumpId: 'P-001', status: 'ON' }
     },
-    data() {
-        return {
-            pumpStatus: 'off', // Default status
-            pumpControlMode: 'AUTOMATIC', // Default control mode
-            apiUrl: `${import.meta.env.VITE_API_BASE_URL}pumpcontrol` // API URL for pump control
-        };
-    },
-    mounted() {
-        this.fetchPumpStatus();
-        // Refresh pump status every 15 seconds
-        setInterval(this.fetchPumpStatus, 15000);
-    },
-    methods: {
-        async fetchPumpStatus() {
-            try {
-                const response = await fetch(this.apiUrl);
-                const data = await response.json();
-
-                const pumpData = data.find(pump => pump.pumpId === `PUMP-ESP32-${this.id.toString().padStart(2, '0')}`);
-                if (pumpData) {
-                    this.pumpStatus = pumpData.status.toLowerCase(); // Update pump status
-                    this.pumpControlMode = pumpData.controlMode; // Update control mode
-                    console.log(`Pump ${this.id}: Status updated to ${this.pumpStatus}`);
-                }
-            } catch (error) {
-                console.error("Error fetching pump status:", error);
-            }
-        },
-        setPumpStatus(activate) {
-            if (this.pumpStatus === (activate ? 'on' : 'off')) {
-                return; // No changes needed
-            }
-
-            this.pumpStatus = activate ? 'on' : 'off';
-            this.pumpControlMode = activate ? 'MANUAL' : 'AUTOMATIC';
-
-            // Update server with new status
-            this.updatePumpStatus();
-        },
-        async updatePumpStatus() {
-            const pumpId = `PUMP-ESP32-${this.id.toString().padStart(2, '0')}`;
-            const baseUrl = `${this.apiUrl}/${pumpId}/toggle`;
-            const action = this.pumpStatus === 'on' ? 'ON' : 'OFF';
-
-            try {
-                const response = await fetch(baseUrl, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ action })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Failed to update pump status: ${response.status}`);
-                }
-
-                const result = await response.json();
-                console.log(`Pump ${this.id} status updated: ${result.message}`);
-            } catch (error) {
-                console.error(`Error updating pump ${this.id} status:`, error);
-            }
-        }
+    controlMode: {
+        type: String,
+        required: true,
+        // Contoh: 'SIAGA', 'MANUAL_OVERRIDE'
     }
-};
+});
+
+// 2. Computed property untuk mengubah status 'ON'/'OFF' menjadi nilai boolean (true/false)
+const isPumpOn = computed(() => props.pump.status === 'ON');
+
+// 3. Computed property untuk menampilkan mode kontrol yang lebih ramah pengguna
+const displayControlMode = computed(() => {
+    if (props.controlMode === 'MANUAL_OVERRIDE') {
+        return 'MANUAL';
+    }
+    return 'AUTO';
+});
+
+// Tidak ada lagi method 'data', 'mounted', 'fetchPumpStatus', 'updatePumpStatus', dll.
+// Komponen ini murni untuk tampilan, sangat ringan dan efisien.
 </script>
+
+<style scoped>
+@keyframes pumpScale {
+    0% {
+        transform: scaleY(1);
+    }
+
+    50% {
+        transform: scaleY(0.8);
+    }
+
+    100% {
+        transform: scaleY(1);
+    }
+}
+
+.animate-pump {
+    animation: pumpScale 2s ease-in-out infinite;
+}
+</style>

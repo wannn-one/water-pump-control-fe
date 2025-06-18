@@ -1,135 +1,287 @@
-<script setup>
-import { onMounted, ref, onUnmounted } from "vue";
-import Navbar from "./components//partials/Navbar.vue";
-import Chart from "./components/Chart.vue"
-import pump from "./components/Pump.vue";
-import Schema from "./components/Schema.vue";
-
-const waterLevels = ref([]);
-const currentPage = ref(1);
-const totalPages = ref(1);
-const pageSize = 10;
-let fetchInterval = null;
-
-const fetchWaterLevels = async (page = 1, limit = 10) => {
-  try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}waterlevel/history/all?page=${page}&limit=${limit}`);
-    const result = await response.json();
-    waterLevels.value = result.data;
-    currentPage.value = result.pagination.currentPage;
-    totalPages.value = result.pagination.totalPages;
-  } catch (error) {
-    console.error("Error fetching water levels:", error);
-  }
-};
-
-const downloadCSV = () => {
-  window.location.href = `${import.meta.env.VITE_API_BASE_URL}waterlevel/history/download/csv`;
-};
-
-onMounted(() => {
-  setTimeout(() => {
-    window.HSStaticMethods.autoInit();
-  }, 100);
-
-  // Initial fetch
-  fetchWaterLevels();
-
-  // Set up interval for fetching water levels every 10 seconds
-  fetchInterval = setInterval(() => {
-    fetchWaterLevels(currentPage.value, pageSize);
-  }, 10000); // 10 seconds
-});
-
-// Clear interval when component is unmounted
-onUnmounted(() => {
-  if (fetchInterval) {
-    clearInterval(fetchInterval);
-  }
-});
-</script>
-
 <template>
   <header class="bg-card w-full h-16 shadow border-b-4 border-main fixed z-10">
     <Navbar />
   </header>
-  <main class="p-12 py-6 overflow-x-hidden pt-20">
-    <article class="w-full grid grid-cols-4 gap-6">
-      <section class="col-span-4 flex gap-4">
+
+  <main class="p-4 sm:p-8 lg:p-12 py-6 overflow-x-hidden pt-20">
+
+    <div v-if="isLoading" class="flex justify-center items-center h-64 text-gray-500 text-xl">
+      <p>Memuat data sistem...</p>
+    </div>
+    <div v-else-if="errorMessage" class="flex justify-center items-center h-64 text-red-500 text-xl p-4 bg-red-100 rounded-lg">
+      <p>{{ errorMessage }}</p>
+    </div>
+    
+    <article v-else class="w-full grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+      <section class="col-span-1 lg:col-span-4 flex justify-between items-center mt-8">
+        <h1 class="text-2xl font-bold text-gray-700">Dashboard Sistem Monitoring</h1>
+        <ModeToggle 
+          :mode="currentSystemMode"
+          @toggle="toggleSystemMode"
+          :disabled="isModeLoading"
+        />
+      </section>
+
+      <section class="col-span-1 lg:col-span-4 flex flex-col xl:flex-row gap-6">
         <section class="bg-card w-full h-full rounded-xl p-4 drop-shadow-2xl grid gap-6">
           <h1 class="text-xl font-medium">Grafik Pembacaan Level Air</h1>
           <Chart />
         </section>
-        <section class="bg-card min-w-[615px] h-full rounded-xl p-4 drop-shadow-2xl relative">
-          <Schema />
+        <section class="bg-card min-w-[300px] xl:min-w-[615px] h-full rounded-xl p-4 drop-shadow-2xl relative">
+          <Schema 
+            :pumps="pumps" 
+            :tank="tank"
+            :systemCondition="systemCondition"
+          />
         </section>
       </section>
-      <section class="bg-card w-full border border-main col-span-3 rounded-xl p-6 drop-shadow-2xl">
+
+      <section class="bg-card w-full border border-main col-span-1 lg:col-span-4 rounded-xl p-6 drop-shadow-2xl">
         <h1 class="text-xl font-medium">Sistem Pengendali Pompa</h1>
-        <article class="w-full rounded-xl py-4 grid grid-cols-3 gap-4">
-          <pump :id="1" :content="{ title: 'P-001' }" />
-          <pump :id="2" :content="{ title: 'P-002' }" />
-          <pump :id="3" :content="{ title: 'P-003' }" />
+        <article class="w-full rounded-xl py-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <Pump 
+            v-for="pump in pumps" 
+            :key="pump.pumpId" 
+            :pump="pump"
+            @toggle="handlePumpToggle"
+          />
         </article>
       </section>
-      <section class="bg-card w-full border border-main col-span-1 rounded-xl p-6 drop-shadow-2xl">
-        <h1 class="text-xl font-medium">Pompa Sirkulasi</h1>
-        <article class="w-full rounded-xl py-4 grid grid-cols-1 gap-4">
-          <pump :id="4" :content="{ title: 'P-004' }" />
-        </article>
+      
+      <section class="bg-card w-full border border-main col-span-1 lg:col-span-4 rounded-xl p-6 drop-shadow-2xl">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+          <h1 class="text-xl font-medium">Histori Pembacaan Level Air</h1>
+          <div class="flex items-center gap-2 mt-3 sm:mt-0">
+            <label for="pageSize" class="text-sm">Tampilkan:</label>
+            <select id="pageSize" v-model="pageSize" @change="fetchHistoryTable(1)" class="border border-gray-300 rounded p-1">
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="20">20</option>
+            </select>
+            <span class="text-sm">data</span>
+          </div>
+        </div>
+        
+        <div class="overflow-x-auto mt-4">
+          <table class="w-full text-center text-sm">
+            <thead class="bg-gray-100">
+              <tr>
+                <th class="border border-main p-2">No</th>
+                <th class="border border-main p-2">Waktu Pencatatan</th>
+                <th class="border border-main p-2">Level Air (cm)</th>
+                <th class="border border-main p-2">Kondisi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="history.length === 0">
+                <td colspan="4" class="text-center border border-main py-4">Tidak ada data histori...</td>
+              </tr>
+              <tr v-else v-for="(item, index) in history" :key="item._id" class="hover:bg-gray-50">
+                <td class="border border-main p-2">{{ (currentPage - 1) * pageSize + index + 1 }}</td>
+                <td class="border border-main p-2">{{ new Date(item.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'medium' }) }}</td>
+                <td class="border border-main p-2 font-semibold">{{ item.level.toFixed(2) }}</td>
+                <td class="border border-main p-2">
+                    <span 
+                      class="px-2 py-1 text-xs font-bold rounded-full"
+                      :class="getConditionClass(item.level)"
+                    >
+                      {{ getConditionForLevel(item.level) }}
+                    </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-      </section>
-      <section class="bg-card w-full border border-main col-span-4 rounded-xl p-6 drop-shadow-2xl">
-        <h1 class="text-xl font-medium">Histori Pembacaan Level Air</h1>
-        <!-- Table -->
-        <table class="w-full">
-          <thead>
-            <tr>
-              <th class="border border-main">No</th>
-              <th class="border border-main">Sensor ID</th>
-              <th class="border border-main">Level Air</th>
-              <th class="border border-main">Kondisi</th>
-              <th class="border border-main">Terakhir Diperbarui</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(item, index) in waterLevels" :key="item._id">
-              <td class="border border-main">{{ (currentPage - 1) * pageSize + index + 1 }}</td>
-              <td class="border border-main">{{ item.sensorId }}</td>
-              <td class="border border-main">{{ item.reading }}</td>
-              <td class="border border-main">{{ item.condition }}</td>
-              <td class="border border-main">{{ new Date(item.lastUpdated).toLocaleString() }}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <!-- Pagination Controls -->
-        <div class="flex justify-between mt-4">
-          <button
-            class="bg-main text-white px-4 py-2 rounded-lg"
-            :disabled="currentPage === 1"
-            @click="fetchWaterLevels(currentPage - 1)"
-          >
-            Previous
-          </button>
-          <span>Page {{ currentPage }} of {{ totalPages }}</span>
-          <button
-            class="bg-main text-white px-4 py-2 rounded-lg"
-            :disabled="currentPage === totalPages"
-            @click="fetchWaterLevels(currentPage + 1)"
-          >
-            Next
-          </button>
+        <div class="flex justify-between items-center mt-4">
+          <button @click="fetchHistoryTable(currentPage - 1)" :disabled="currentPage === 1" class="bg-main text-white px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Previous</button>
+          <span class="text-sm font-medium">Halaman {{ currentPage }} dari {{ totalPages }}</span>
+          <button @click="fetchHistoryTable(currentPage + 1)" :disabled="currentPage === totalPages" class="bg-main text-white px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Next</button>
         </div>
       </section>
 
-       <!-- Button Download CSV Centered -->
-       <section class="col-span-4 flex justify-center mt-4">
-        <button class="bg-main text-white px-4 py-2 rounded-lg" @click="downloadCSV">
-          Download CSV
+      <section class="col-span-1 lg:col-span-4 flex justify-center mt-4">
+        <button class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors font-semibold" @click="downloadCSV">
+          Unduh Data Histori (CSV)
         </button>
       </section>
 
     </article>
   </main>
 </template>
+
+<script setup>
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import Navbar from "./components/partials/Navbar.vue";
+import Chart from "./components/Chart.vue";
+import Pump from "./components/Pump.vue";
+import Schema from "./components/Schema.vue";
+import ModeToggle from './components/partials/ModeToggle.vue';
+
+// --- State Management Terpusat ---
+const systemStatus = ref(null);
+const history = ref([]);
+const currentPage = ref(1);
+const totalPages = ref(1);
+const pageSize = ref(5);
+const isLoading = ref(true);
+const isModeLoading = ref(false); // State loading untuk tombol toggle
+const errorMessage = ref('');
+let pollingInterval = null;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+// --- Computed Properties ---
+const pumps = computed(() => systemStatus.value ? systemStatus.value.pumps : []);
+const tank = computed(() => systemStatus.value ? systemStatus.value.tank : null);
+const systemCondition = computed(() => systemStatus.value ? systemStatus.value.systemCondition : 'UNKNOWN');
+const currentSystemMode = computed(() => systemStatus.value?.systemCondition === 'MANUAL_OVERRIDE' ? 'MANUAL' : 'AUTO');
+
+// --- Helper Functions ---
+function getConditionForLevel(level) {
+    if (level <= 15) return 'NORMAL 1';
+    if (level <= 34) return 'NORMAL 2';
+    if (level <= 54) return 'SIAGA';
+    return 'BANJIR';
+}
+
+function getConditionClass(level) {
+    const condition = getConditionForLevel(level);
+    switch (condition) {
+        case 'NORMAL 1': return 'bg-blue-100 text-blue-800';
+        case 'NORMAL 2': return 'bg-green-100 text-green-800';
+        case 'SIAGA': return 'bg-yellow-100 text-yellow-800';
+        case 'BANJIR': return 'bg-red-100 text-red-800';
+        default: return 'bg-gray-100 text-gray-800';
+    }
+}
+
+// --- Logika API ---
+
+async function fetchSystemStatus() {
+  try {
+    const response = await fetch(`${API_BASE_URL}system/status`);
+    if (!response.ok) throw new Error('Gagal mengambil data status sistem. Server mungkin tidak berjalan.');
+    const result = await response.json();
+    if (result.success) {
+      systemStatus.value = result.data;
+    } else {
+      throw new Error(result.message || 'Gagal memuat status sistem.');
+    }
+  } catch (error) {
+    console.error("Error fetching system status:", error);
+    errorMessage.value = error.message;
+    if(pollingInterval) clearInterval(pollingInterval);
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+async function fetchHistoryTable(page = 1) {
+  if (page < 1 || (page > totalPages.value && totalPages.value > 0)) return;
+  try {
+    const response = await fetch(`${API_BASE_URL}history/table?page=${page}&limit=${pageSize.value}`);
+    if (!response.ok) throw new Error('Gagal mengambil data histori');
+    const result = await response.json();
+    if (result.success) {
+      history.value = result.data;
+      currentPage.value = result.pagination.currentPage;
+      totalPages.value = result.pagination.totalPages;
+    }
+  } catch (error) {
+    console.error("Error fetching history table:", error);
+  }
+}
+
+async function handlePumpToggle(pumpId) {
+  const pumpIndex = pumps.value.findIndex(p => p.pumpId === pumpId);
+  if (pumpIndex === -1) return;
+
+  const originalStatus = pumps.value[pumpIndex].status;
+  const newStatus = originalStatus === 'ON' ? 'OFF' : 'ON';
+  pumps.value[pumpIndex].status = newStatus; // Optimistic UI
+
+  try {
+    const response = await fetch(`${API_BASE_URL}pump/${pumpId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (!response.ok) throw new Error('Perintah ke server gagal!');
+    const result = await response.json();
+    console.log(`Server merespons: ${result.message}`);
+    setTimeout(fetchSystemStatus, 500); 
+  } catch (error) {
+    console.error(`Gagal mengubah status pompa ${pumpId}:`, error);
+    pumps.value[pumpIndex].status = originalStatus; // Kembalikan state jika gagal
+    alert(`Gagal mengubah status pompa ${pumpId}.`);
+  }
+}
+
+async function toggleSystemMode() {
+  if (isModeLoading.value || !systemStatus.value) return;
+  isModeLoading.value = true;
+
+  const originalCondition = systemStatus.value.systemCondition;
+  const newMode = currentSystemMode.value === 'AUTO' ? 'MANUAL' : 'AUTO';
+
+  // --- BAGIAN YANG DIPERBAIKI ---
+  if (newMode === 'MANUAL') {
+    systemStatus.value.systemCondition = 'MANUAL_OVERRIDE';
+  } else { // Saat mengembalikan ke mode AUTO
+    // Ambil level air saat ini dari state
+    const currentLevel = systemStatus.value.tank.currentLevelCm;
+    
+    // Tentukan kondisi yang benar berdasarkan level tersebut menggunakan helper function
+    const newCalculatedCondition = getConditionForLevel(currentLevel);
+    
+    // Update UI dengan kondisi yang akurat, bukan lagi 'NORMAL 1'
+    systemStatus.value.systemCondition = newCalculatedCondition;
+  }
+  // --- AKHIR BAGIAN YANG DIPERBAIKI ---
+
+  try {
+    const response = await fetch(`${API_BASE_URL}system/mode`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: newMode })
+    });
+
+    if (!response.ok) throw new Error('Perintah ganti mode gagal dikirim');
+
+    const result = await response.json();
+    console.log(`Server merespons: ${result.message}`);
+    
+    setTimeout(fetchSystemStatus, 1000);
+
+  } catch (error) {
+    console.error(`Gagal mengubah mode ke ${newMode}:`, error);
+    systemStatus.value.systemCondition = originalCondition; // Rollback ke kondisi awal jika gagal
+    alert(`Gagal mengubah mode sistem.`);
+  } finally {
+    setTimeout(() => { isModeLoading.value = false; }, 1500);
+  }
+}
+
+function downloadCSV() {
+    window.open(`${API_BASE_URL}history/download/csv`, '_blank');
+}
+
+// --- Lifecycle Hooks ---
+onMounted(() => {
+  fetchSystemStatus();
+  fetchHistoryTable();
+  pollingInterval = setInterval(() => {
+    fetchSystemStatus();
+    if (currentPage.value === 1) {
+      fetchHistoryTable(1);
+    }
+  }, 5000);
+});
+
+onUnmounted(() => {
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+  }
+});
+</script>
