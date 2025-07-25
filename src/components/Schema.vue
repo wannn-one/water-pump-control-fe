@@ -1,202 +1,178 @@
 <template>
-    <div class="relative w-full h-full">
+  <div ref="mountPoint" class="relative w-full h-full rounded-xl overflow-hidden">
+    <div v-if="isLoading" class="absolute inset-0 flex justify-center items-center bg-gray-100 bg-opacity-80 z-20">
+      <p class="text-gray-600">Memuat model 3D...</p>
+    </div>
+    <div v-if="loadError" class="absolute inset-0 flex justify-center items-center bg-red-100 bg-opacity-80 z-20">
+      <p class="text-red-600">{{ loadError }}</p>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+
+const props = defineProps({
+    pumps: { type: Array, required: true },
+    tank: { type: Object, required: true },
+    systemCondition: { type: String, required: true }
+});
+
+const mountPoint = ref(null);
+const isLoading = ref(true);
+const loadError = ref('');
+let renderer, scene, camera, controls, loadedModel, colorUpdateInterval;
+
+const colorOn = new THREE.Color(0x4ade80);
+const colorOff = new THREE.Color(0x9ca3af);
+
+function init() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xf1f5f9);
+
+  camera = new THREE.PerspectiveCamera(50, mountPoint.value.clientWidth / mountPoint.value.clientHeight, 0.1, 10000);
   
-      <TankIndicator 
-        v-if="tank"
-        :tank="tank" 
-        class="left-0 top-0" 
-      />
-      <TankIndicator 
-      :tank="{ tankId: 'TK-002', currentLevelCm: 0 }"
-      :is-secondary="true"
-      class="right-0 top-16" 
-    />
-  
-      <PumpIndicator 
-        v-for="pump in pumps"
-        :key="pump.pumpId"
-        :pump="pump"
-        :controlMode="systemCondition"
-        :style="getIndicatorStyle(pump.pumpId)"
-      />
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(mountPoint.value.clientWidth, mountPoint.value.clientHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  mountPoint.value.appendChild(renderer.domElement);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+
+  const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+  scene.add(ambientLight);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+  directionalLight.position.set(5, 10, 7.5);
+  scene.add(directionalLight);
+
+  const loader = new GLTFLoader();
+  loader.load(
+    '/PumpDesign.glb',
+    (gltf) => {
+      loadedModel = gltf.scene;
       
-      <div class="w-[3%] h-[80%] bg-water absolute bottom-8 left-24 rounded-l-xl flex items-center py-4">
-          <span class="h-full running-animationY inversey transform">
-              <svg class="transform -rotate-90" width="18" height="8" viewBox="0 0 25 16" fill="none"
-                  xmlns="http://www.w3.org/2000/svg">
-                  <path
-                      d="M1 7C0.447715 7 4.82823e-08 7.44772 0 8C-4.82823e-08 8.55228 0.447715 9 1 9L1 7ZM24.7071 8.70711C25.0976 8.31658 25.0976 7.68342 24.7071 7.2929L18.3431 0.928934C17.9526 0.538409 17.3195 0.538409 16.9289 0.928934C16.5384 1.31946 16.5384 1.95262 16.9289 2.34315L22.5858 8L16.9289 13.6569C16.5384 14.0474 16.5384 14.6805 16.9289 15.0711C17.3195 15.4616 17.9526 15.4616 18.3431 15.0711L24.7071 8.70711ZM1 9L24 9L24 7L1 7L1 9Z"
-                      fill="white" />
-              </svg>
-          </span>
-      </div>
-      <div class="w-[3%] h-[65%] bg-water absolute right-16 top-28 rounded-r-xl flex items-center py-4">
-          <span class="h-full running-animationY">
-              <svg class="transform rotate-90" width="18" height="8" viewBox="0 0 25 16" fill="none"
-                  xmlns="http://www.w3.org/2000/svg">
-                  <path
-                      d="M1 7C0.447715 7 4.82823e-08 7.44772 0 8C-4.82823e-08 8.55228 0.447715 9 1 9L1 7ZM24.7071 8.70711C25.0976 8.31658 25.0976 7.68342 24.7071 7.2929L18.3431 0.928934C17.9526 0.538409 17.3195 0.538409 16.9289 0.928934C16.5384 1.31946 16.5384 1.95262 16.9289 2.34315L22.5858 8L16.9289 13.6569C16.5384 14.0474 16.5384 14.6805 16.9289 15.0711C17.3195 15.4616 17.9526 15.4616 18.3431 15.0711L24.7071 8.70711ZM1 9L24 9L24 7L1 7L1 9Z"
-                      fill="white" />
-              </svg>
-          </span>
-      </div>
-      <div class="w-[3%] h-[70%] bg-water absolute inset-7 left-56 z-0 rounded-l-xl flex items-center py-4">
-      </div>
-      <div class="w-[3%] h-[70%] bg-water absolute inset-7 left-[65%] rounded-r-xl flex items-center py-4 ">
-      </div>
-      <div class="w-[29%] h-[5%] bg-water absolute inset-12 rounded-l-xl flex items-center ml-4">
-          <span class="w-full running-animationX inversex">
-              <svg class="" width="18" height="8" viewBox="0 0 25 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                      d="M1 7C0.447715 7 4.82823e-08 7.44772 0 8C-4.82823e-08 8.55228 0.447715 9 1 9L1 7ZM24.7071 8.70711C25.0976 8.31658 25.0976 7.68342 24.7071 7.2929L18.3431 0.928934C17.9526 0.538409 17.3195 0.538409 16.9289 0.928934C16.5384 1.31946 16.5384 1.95262 16.9289 2.34315L22.5858 8L16.9289 13.6569C16.5384 14.0474 16.5384 14.6805 16.9289 15.0711C17.3195 15.4616 17.9526 15.4616 18.3431 15.0711L24.7071 8.70711ZM1 9L24 9L24 7L1 7L1 9Z"
-                      fill="white" />
-              </svg>
-          </span>
-      </div>
-      <div class="w-[28%] h-[5%] bg-water absolute right-12 top-[36.5%] rounded-r-xl flex items-center px-4">
-          <span class="w-full running-animationX inversex">
-              <svg class="" width="18" height="8" viewBox="0 0 25 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                      d="M1 7C0.447715 7 4.82823e-08 7.44772 0 8C-4.82823e-08 8.55228 0.447715 9 1 9L1 7ZM24.7071 8.70711C25.0976 8.31658 25.0976 7.68342 24.7071 7.2929L18.3431 0.928934C17.9526 0.538409 17.3195 0.538409 16.9289 0.928934C16.5384 1.31946 16.5384 1.95262 16.9289 2.34315L22.5858 8L16.9289 13.6569C16.5384 14.0474 16.5384 14.6805 16.9289 15.0711C17.3195 15.4616 17.9526 15.4616 18.3431 15.0711L24.7071 8.70711ZM1 9L24 9L24 7L1 7L1 9Z"
-                      fill="white" />
-              </svg>
-          </span>
-      </div>
-      <div class="w-[71%] h-[5%] bg-water absolute bottom-8 left-24 rounded-b-xl flex items-center px-4">
-          <span class="w-full running-animationX">
-              <svg class="transform rotate-180" width="18" height="8" viewBox="0 0 25 16" fill="none"
-                  xmlns="http://www.w3.org/2000/svg">
-                  <path
-                      d="M1 7C0.447715 7 4.82823e-08 7.44772 0 8C-4.82823e-08 8.55228 0.447715 9 1 9L1 7ZM24.7071 8.70711C25.0976 8.31658 25.0976 7.68342 24.7071 7.2929L18.3431 0.928934C17.9526 0.538409 17.3195 0.538409 16.9289 0.928934C16.5384 1.31946 16.5384 1.95262 16.9289 2.34315L22.5858 8L16.9289 13.6569C16.5384 14.0474 16.5384 14.6805 16.9289 15.0711C17.3195 15.4616 17.9526 15.4616 18.3431 15.0711L24.7071 8.70711ZM1 9L24 9L24 7L1 7L1 9Z"
-                      fill="white" />
-              </svg>
-          </span>
-      </div>
-      <div class="w-[29%] h-[5%] bg-water absolute left-56 top-6 rounded-t-xl flex items-center px-4">
-          <span class="w-full running-animationX inversex">
-              <svg class="" width="18" height="8" viewBox="0 0 25 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                      d="M1 7C0.447715 7 4.82823e-08 7.44772 0 8C-4.82823e-08 8.55228 0.447715 9 1 9L1 7ZM24.7071 8.70711C25.0976 8.31658 25.0976 7.68342 24.7071 7.2929L18.3431 0.928934C17.9526 0.538409 17.3195 0.538409 16.9289 0.928934C16.5384 1.31946 16.5384 1.95262 16.9289 2.34315L22.5858 8L16.9289 13.6569C16.5384 14.0474 16.5384 14.6805 16.9289 15.0711C17.3195 15.4616 17.9526 15.4616 18.3431 15.0711L24.7071 8.70711ZM1 9L24 9L24 7L1 7L1 9Z"
-                      fill="white" />
-              </svg>
-          </span>
-      </div>
-      <div class="w-[29%] h-[5%] bg-water absolute left-56 rounded-tl-xl bottom-60 flex items-center px-4">
-          <span class="w-full running-animationX inversex">
-              <svg class="" width="18" height="8" viewBox="0 0 25 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                      d="M1 7C0.447715 7 4.82823e-08 7.44772 0 8C-4.82823e-08 8.55228 0.447715 9 1 9L1 7ZM24.7071 8.70711C25.0976 8.31658 25.0976 7.68342 24.7071 7.2929L18.3431 0.928934C17.9526 0.538409 17.3195 0.538409 16.9289 0.928934C16.5384 1.31946 16.5384 1.95262 16.9289 2.34315L22.5858 8L16.9289 13.6569C16.5384 14.0474 16.5384 14.6805 16.9289 15.0711C17.3195 15.4616 17.9526 15.4616 18.3431 15.0711L24.7071 8.70711ZM1 9L24 9L24 7L1 7L1 9Z"
-                      fill="white" />
-              </svg>
-          </span>
-      </div>
-      <div class="w-[29%] h-[5%] bg-water absolute left-[39%] rounded-b-xl bottom-[22%] flex items-center px-4">
-          <span class="w-full running-animationX inversex">
-              <svg class="" width="18" height="8" viewBox="0 0 25 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                      d="M1 7C0.447715 7 4.82823e-08 7.44772 0 8C-4.82823e-08 8.55228 0.447715 9 1 9L1 7ZM24.7071 8.70711C25.0976 8.31658 25.0976 7.68342 24.7071 7.2929L18.3431 0.928934C17.9526 0.538409 17.3195 0.538409 16.9289 0.928934C16.5384 1.31946 16.5384 1.95262 16.9289 2.34315L22.5858 8L16.9289 13.6569C16.5384 14.0474 16.5384 14.6805 16.9289 15.0711C17.3195 15.4616 17.9526 15.4616 18.3431 15.0711L24.7071 8.70711ZM1 9L24 9L24 7L1 7L1 9Z"
-                      fill="white" />
-              </svg>
-          </span>
-      </div>
-      </div>
-  </template>
-  
-  <script setup>
-  import TankIndicator from './indicators/TankIndicator.vue';
-  import PumpIndicator from './indicators/PumpIndicator.vue';
-  
-  // Komponen ini sekarang hanya menerima data dari komponen induk (misal: App.vue)
-  const props = defineProps({
-      pumps: {
-          type: Array,
-          required: true,
-          default: () => [] // Defaultnya array kosong
-      },
-      tank: {
-          type: Object,
-          required: true,
-          default: () => ({})
-      },
-      systemCondition: {
-          type: String,
-          required: true,
-          default: 'UNKNOWN'
-      }
-  });
-  
-  // Fungsi helper untuk menentukan posisi CSS setiap indikator secara dinamis.
-  // Sesuaikan nilai top/left ini agar pas dengan gambar diagram latar belakang Anda.
-  function getIndicatorStyle(pumpId) {
-      switch (pumpId) {
-          case 'P-001':
-              return { top: '-1rem', left: '56%' }; // Disesuaikan sedikit
-          case 'P-002':
-              return { top: '7rem', left: '56%' }; // Disesuaikan sedikit
-          case 'P-003':
-              return { top: '16rem', left: '56%' }; // Disesuaikan sedikit
-          default:
-              return {};
-      }
+      loadedModel.traverse((child) => {
+        if (child.isMesh) {
+          child.material.side = THREE.DoubleSide;
+        }
+      });
+
+      const initialBox = new THREE.Box3().setFromObject(loadedModel);
+      const center = initialBox.getCenter(new THREE.Vector3());
+      loadedModel.position.sub(center);
+      loadedModel.rotation.x = Math.PI / 2;
+      const rotatedBox = new THREE.Box3().setFromObject(loadedModel);
+      loadedModel.position.y -= rotatedBox.min.y;
+      const verticalOffset = 0;
+      loadedModel.position.y += verticalOffset;
+
+      const size = rotatedBox.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const fov = camera.fov * (Math.PI / 180);
+      let cameraDistance = Math.abs(maxDim / 1.5 / Math.tan(fov / 2));
+      cameraDistance *= 0.9;
+      controls.target.set(maxDim * 0.2, size.y / 2 + verticalOffset, 0);
+      camera.position.set(
+        cameraDistance * 0.5,
+        cameraDistance * 0.5 + verticalOffset,
+        cameraDistance * 0.5
+      );
+      controls.update();
+
+      scene.add(loadedModel);
+      isLoading.value = false;
+
+      updatePumpColors();
+
+      colorUpdateInterval = setInterval(() => {
+        updatePumpColors();
+      }, 5000);
+    },
+    undefined,
+    (error) => {
+      console.error('Gagal memuat model 3D:', error);
+      loadError.value = 'Gagal memuat file model 3D.';
+      isLoading.value = false;
+    }
+  );
+
+  animate();
+}
+
+function updatePumpColors() {
+    if (!loadedModel || !scene || props.pumps.length === 0) {
+        return;
+    }
+
+    props.pumps.forEach(pump => {
+        const objectNameInModel = pump.pumpId
+        if (!objectNameInModel) {
+            console.warn(`Tidak ada pemetaan nama untuk pumpId '${pump.pumpId}'`);
+            return;
+        }
+
+        const pumpObject = loadedModel.getObjectByName(objectNameInModel);
+
+        if (pumpObject) {
+            const targetColor = pump.status === 'ON' ? colorOn : colorOff;
+            
+            pumpObject.traverse((child) => {
+                if (child.isMesh && child.material) {
+                    child.material = child.material.clone();
+                    child.material.color.copy(targetColor);
+                }
+            });
+        } else {
+            console.warn(`Objek 3D dengan nama '${objectNameInModel}' tidak ditemukan di dalam model.`);
+        }
+    });
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+function onWindowResize() {
+    if (mountPoint.value && renderer) {
+        camera.aspect = mountPoint.value.clientWidth / mountPoint.value.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(mountPoint.value.clientWidth, mountPoint.value.clientHeight);
+    }
+}
+
+onMounted(async () => {
+  await nextTick();
+  if (mountPoint.value) {
+    init();
+    window.addEventListener('resize', onWindowResize);
   }
-  </script>
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', onWindowResize);
   
-  <style scoped>
-  .running-animationX {
-      animation: runningx 4s infinite linear;
+  if (colorUpdateInterval) {
+    clearInterval(colorUpdateInterval);
   }
   
-  .running-animationY {
-      animation: runningy 4s infinite linear;
+  if (renderer) {
+    renderer.dispose();
+    const canvas = renderer.domElement;
+    if (canvas && canvas.parentNode) {
+      canvas.parentNode.removeChild(canvas);
+    }
   }
-  
-  .running-animationY.inversey {
-      animation: runningyinversey 4s infinite linear;
-  }
-  
-  .running-animationX.inversex {
-      animation: runningxinversex 4s infinite linear;
-  }
-  
-  @keyframes runningx {
-      from {
-          transform: translateX(100%);
-      }
-  
-      to {
-          transform: translateX(0%);
-      }
-  }
-  
-  @keyframes runningxinversex {
-      from {
-          transform: translateX(0%);
-      }
-  
-      to {
-          transform: translateX(100%);
-      }
-  }
-  
-  @keyframes runningy {
-      from {
-          transform: translateY(0%);
-      }
-  
-      to {
-          transform: translateY(100%);
-      }
-  
-  }
-  
-  @keyframes runningyinversey {
-      from {
-          transform: translateY(100%);
-      }
-  
-      to {
-          transform: translateY(0%);
-      }
-  
-  }
-  </style>
+});
+
+watch(props.pumps, (newPumps) => {
+    updatePumpColors();
+}, { deep: true });
+
+</script>
