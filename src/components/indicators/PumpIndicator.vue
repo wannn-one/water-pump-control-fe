@@ -2,9 +2,7 @@
     <section class="bg-card w-fit h-fit border rounded-xl p-5 drop-shadow-xl absolute z-10 scale-50" :class="{
         'bg-ongreen text-white': isPumpOn,
         'bg-neutral text-black': !isPumpOn
-    }"
-    style="transform: translateX(-60%) translateY(10%);"
-    >
+    }" style="transform: translateX(-60%) translateY(10%);">
         <h1 class="text-sm font-medium">{{ pump.pumpId }}</h1>
         <section class="flex w-full justify-between mt-1">
             <img class="bg-cover h-12" :class="{ 'animate-pump': isPumpOn }" src="/src/assets/img/Pump.png" alt="Pompa">

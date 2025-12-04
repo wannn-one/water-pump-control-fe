@@ -8,19 +8,16 @@
     <div v-if="isLoading" class="flex justify-center items-center h-64 text-gray-500 text-xl">
       <p>Memuat data sistem...</p>
     </div>
-    <div v-else-if="errorMessage" class="flex justify-center items-center h-64 text-red-500 text-xl p-4 bg-red-100 rounded-lg">
+    <div v-else-if="errorMessage"
+      class="flex justify-center items-center h-64 text-red-500 text-xl p-4 bg-red-100 rounded-lg">
       <p>{{ errorMessage }}</p>
     </div>
-    
+
     <article v-else class="w-full grid grid-cols-1 lg:grid-cols-4 gap-6">
 
       <section class="col-span-1 lg:col-span-4 flex justify-between items-center mb-2">
         <h1 class="text-2xl font-bold text-gray-700">Dashboard Sistem Monitoring</h1>
-        <ModeToggle 
-          :mode="currentSystemMode"
-          @toggle="toggleSystemMode"
-          :disabled="isModeLoading"
-        />
+        <ModeToggle :mode="currentSystemMode" @toggle="toggleSystemMode" :disabled="isModeLoading" />
       </section>
 
       <section class="col-span-1 lg:col-span-4 flex flex-col xl:flex-row gap-6">
@@ -29,32 +26,24 @@
           <Chart />
         </section>
         <section class="bg-card min-w-[300px] xl:min-w-[615px] h-full rounded-xl p-4 drop-shadow-2xl relative">
-          <Schema 
-            :pumps="pumps" 
-            :tank="tank"
-            :systemCondition="systemCondition"
-          />
+          <Schema :pumps="pumps" :tank="tank" :systemCondition="systemCondition" />
         </section>
       </section>
 
       <section class="bg-card w-full border border-main col-span-1 lg:col-span-4 rounded-xl p-6 drop-shadow-2xl">
         <h1 class="text-xl font-medium">Sistem Pengendali Pompa</h1>
         <article class="w-full rounded-xl py-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          <Pump 
-            v-for="pump in pumps" 
-            :key="pump.pumpId" 
-            :pump="pump"
-            @toggle="handlePumpToggle"
-          />
+          <Pump v-for="pump in pumps" :key="pump.pumpId" :pump="pump" @toggle="handlePumpToggle" />
         </article>
       </section>
-      
+
       <section class="bg-card w-full border border-main col-span-1 lg:col-span-4 rounded-xl p-6 drop-shadow-2xl">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
           <h1 class="text-xl font-medium">Histori Pembacaan Level Air</h1>
           <div class="flex items-center gap-2 mt-3 sm:mt-0">
             <label for="pageSize" class="text-sm">Tampilkan:</label>
-            <select id="pageSize" v-model="pageSize" @change="fetchHistoryTable(1)" class="border border-gray-300 rounded p-1">
+            <select id="pageSize" v-model="pageSize" @change="fetchHistoryTable(1)"
+              class="border border-gray-300 rounded p-1">
               <option value="5">5</option>
               <option value="10">10</option>
               <option value="20">20</option>
@@ -62,7 +51,7 @@
             <span class="text-sm">data</span>
           </div>
         </div>
-        
+
         <div class="overflow-x-auto mt-4">
           <table class="w-full text-center text-sm">
             <thead class="bg-gray-100">
@@ -79,15 +68,14 @@
               </tr>
               <tr v-else v-for="(item, index) in history" :key="item._id" class="hover:bg-gray-50">
                 <td class="border border-main p-2">{{ (currentPage - 1) * pageSize + index + 1 }}</td>
-                <td class="border border-main p-2">{{ new Date(item.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'medium' }) }}</td>
+                <td class="border border-main p-2">{{ new Date(item.timestamp).toLocaleString('id-ID', {
+                  dateStyle:
+                    'short', timeStyle: 'medium' }) }}</td>
                 <td class="border border-main p-2 font-semibold">{{ item.level.toFixed(2) }}</td>
                 <td class="border border-main p-2">
-                    <span 
-                      class="px-2 py-1 text-xs font-bold rounded-full"
-                      :class="getConditionClass(item.level)"
-                    >
-                      {{ getConditionForLevel(item.level) }}
-                    </span>
+                  <span class="px-2 py-1 text-xs font-bold rounded-full" :class="getConditionClass(item.level)">
+                    {{ getConditionForLevel(item.level) }}
+                  </span>
                 </td>
               </tr>
             </tbody>
@@ -95,9 +83,11 @@
         </div>
 
         <div class="flex justify-between items-center mt-4">
-          <button @click="fetchHistoryTable(currentPage - 1)" :disabled="currentPage === 1" class="bg-main text-white px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Previous</button>
+          <button @click="fetchHistoryTable(currentPage - 1)" :disabled="currentPage === 1"
+            class="bg-main text-white px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Previous</button>
           <span class="text-sm font-medium">Halaman {{ currentPage }} dari {{ totalPages }}</span>
-          <button @click="fetchHistoryTable(currentPage + 1)" :disabled="currentPage === totalPages" class="bg-main text-white px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Next</button>
+          <button @click="fetchHistoryTable(currentPage + 1)" :disabled="currentPage === totalPages"
+            class="bg-main text-white px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Next</button>
         </div>
       </section>
 
@@ -106,7 +96,8 @@
           <h1 class="text-xl font-medium">Histori Aksi Kontrol</h1>
           <div class="flex items-center gap-2 mt-3 sm:mt-0">
             <label for="actionLogPageSize" class="text-sm">Tampilkan:</label>
-            <select id="actionLogPageSize" v-model="actionLogPageSize" @change="fetchActionLogs(1)" class="border border-gray-300 rounded p-1">
+            <select id="actionLogPageSize" v-model="actionLogPageSize" @change="fetchActionLogs(1)"
+              class="border border-gray-300 rounded p-1">
               <option value="5">5</option>
               <option value="10">10</option>
               <option value="20">20</option>
@@ -114,7 +105,7 @@
             <span class="text-sm">data</span>
           </div>
         </div>
-        
+
         <div class="overflow-x-auto mt-4">
           <table class="w-full text-center text-sm">
             <thead class="bg-gray-100">
@@ -130,9 +121,12 @@
                 <td colspan="4" class="text-center border border-main py-4">Tidak ada data log aksi...</td>
               </tr>
               <tr v-else v-for="log in actionLogs" :key="log._id" class="hover:bg-gray-50">
-                <td class="border border-main p-2">{{ new Date(log.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'medium' }) }}</td>
+                <td class="border border-main p-2">{{ new Date(log.timestamp).toLocaleString('id-ID', {
+                  dateStyle:
+                    'short', timeStyle: 'medium' }) }}</td>
                 <td class="border border-main p-2">
-                  <span class="px-2 py-1 text-xs font-bold rounded-full" :class="log.source === 'USER_DASHBOARD' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'">
+                  <span class="px-2 py-1 text-xs font-bold rounded-full"
+                    :class="log.source === 'USER_DASHBOARD' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'">
                     {{ log.source }}
                   </span>
                 </td>
@@ -144,17 +138,22 @@
         </div>
 
         <div class="flex justify-between items-center mt-4">
-          <button @click="fetchActionLogs(actionLogCurrentPage - 1)" :disabled="actionLogCurrentPage === 1" class="bg-main text-white px-4 py-2 rounded-lg disabled:opacity-50">Previous</button>
+          <button @click="fetchActionLogs(actionLogCurrentPage - 1)" :disabled="actionLogCurrentPage === 1"
+            class="bg-main text-white px-4 py-2 rounded-lg disabled:opacity-50">Previous</button>
           <span class="text-sm font-medium">Halaman {{ actionLogCurrentPage }} dari {{ actionLogTotalPages }}</span>
-          <button @click="fetchActionLogs(actionLogCurrentPage + 1)" :disabled="actionLogCurrentPage === actionLogTotalPages" class="bg-main text-white px-4 py-2 rounded-lg disabled:opacity-50">Next</button>
+          <button @click="fetchActionLogs(actionLogCurrentPage + 1)"
+            :disabled="actionLogCurrentPage === actionLogTotalPages"
+            class="bg-main text-white px-4 py-2 rounded-lg disabled:opacity-50">Next</button>
         </div>
       </section>
-      
+
       <section class="col-span-1 lg:col-span-4 flex flex-wrap justify-center gap-4 mt-4">
-        <button class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors font-semibold" @click="downloadSensorHistoryCSV">
+        <button class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors font-semibold"
+          @click="downloadSensorHistoryCSV">
           Unduh Histori Sensor (CSV)
         </button>
-        <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors font-semibold" @click="downloadActionLogCSV">
+        <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors font-semibold"
+          @click="downloadActionLogCSV">
           Unduh Log Aksi Kontrol (CSV)
         </button>
       </section>
@@ -195,21 +194,21 @@ const systemCondition = computed(() => systemStatus.value ? systemStatus.value.s
 const currentSystemMode = computed(() => systemStatus.value?.systemCondition === 'MANUAL_OVERRIDE' ? 'MANUAL' : 'AUTO');
 
 function getConditionForLevel(level) {
-    if (level <= 15) return 'NORMAL 1';
-    if (level <= 34) return 'NORMAL 2';
-    if (level <= 54) return 'SIAGA';
-    return 'BANJIR';
+  if (level <= 15) return 'NORMAL 1';
+  if (level <= 34) return 'NORMAL 2';
+  if (level <= 54) return 'SIAGA';
+  return 'BANJIR';
 }
 
 function getConditionClass(level) {
-    const condition = getConditionForLevel(level);
-    switch (condition) {
-        case 'NORMAL 1': return 'bg-blue-100 text-blue-800';
-        case 'NORMAL 2': return 'bg-green-100 text-green-800';
-        case 'SIAGA': return 'bg-yellow-100 text-yellow-800';
-        case 'BANJIR': return 'bg-red-100 text-red-800';
-        default: return 'bg-gray-100 text-gray-800';
-    }
+  const condition = getConditionForLevel(level);
+  switch (condition) {
+    case 'NORMAL 1': return 'bg-blue-100 text-blue-800';
+    case 'NORMAL 2': return 'bg-green-100 text-green-800';
+    case 'SIAGA': return 'bg-yellow-100 text-yellow-800';
+    case 'BANJIR': return 'bg-red-100 text-red-800';
+    default: return 'bg-gray-100 text-gray-800';
+  }
 }
 
 function formatActionLogDetails(log) {
@@ -235,7 +234,7 @@ async function fetchSystemStatus() {
   } catch (error) {
     console.error("Error fetching system status:", error);
     errorMessage.value = error.message;
-    if(pollingInterval) clearInterval(pollingInterval);
+    if (pollingInterval) clearInterval(pollingInterval);
   } finally {
     isLoading.value = false;
   }
@@ -274,7 +273,7 @@ async function handlePumpToggle(pumpId) {
     if (!response.ok) throw new Error('Perintah ke server gagal!');
     const result = await response.json();
     console.log(`Server merespons: ${result.message}`);
-    setTimeout(fetchSystemStatus, 500); 
+    setTimeout(fetchSystemStatus, 500);
   } catch (error) {
     console.error(`Gagal mengubah status pompa ${pumpId}:`, error);
     pumps.value[pumpIndex].status = originalStatus; // Kembalikan state jika gagal
@@ -304,7 +303,7 @@ async function toggleSystemMode() {
       body: JSON.stringify({ mode: newMode })
     });
     if (!response.ok) throw new Error('Perintah ganti mode gagal dikirim');
-    
+
     const result = await response.json();
     console.log(`Server merespons: ${result.message}`);
     setTimeout(fetchSystemStatus, 1000);
@@ -322,7 +321,7 @@ async function fetchActionLogs(page = 1) {
   try {
     const response = await fetch(`${API_BASE_URL}logs/actions?page=${page}&limit=${actionLogPageSize.value}`);
     if (!response.ok) throw new Error('Gagal mengambil data log aksi');
-    
+
     const result = await response.json();
     if (result.success) {
       actionLogs.value = result.data;
@@ -335,10 +334,10 @@ async function fetchActionLogs(page = 1) {
 }
 
 function downloadSensorHistoryCSV() {
-    window.open(`${API_BASE_URL}history/download/csv`, '_blank');
+  window.open(`${API_BASE_URL}history/download/csv`, '_blank');
 }
 function downloadActionLogCSV() {
-    window.open(`${API_BASE_URL}logs/actions/download/csv`, '_blank');
+  window.open(`${API_BASE_URL}logs/actions/download/csv`, '_blank');
 }
 
 onMounted(() => {
