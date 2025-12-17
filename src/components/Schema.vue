@@ -16,9 +16,9 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 const props = defineProps({
-    pumps: { type: Array, required: true },
-    tank: { type: Object, required: true },
-    systemCondition: { type: String, required: true }
+  pumps: { type: Array, required: true },
+  tank: { type: Object, required: true },
+  systemCondition: { type: String, required: true }
 });
 
 const mountPoint = ref(null);
@@ -34,7 +34,9 @@ function init() {
   scene.background = new THREE.Color(0xf1f5f9);
 
   camera = new THREE.PerspectiveCamera(50, mountPoint.value.clientWidth / mountPoint.value.clientHeight, 0.1, 10000);
-  
+
+  window.camera = camera;
+
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(mountPoint.value.clientWidth, mountPoint.value.clientHeight);
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -52,10 +54,10 @@ function init() {
 
   const loader = new GLTFLoader();
   loader.load(
-    '/PumpDesign.glb',
+    '/PumpDesign_V2.glb',
     (gltf) => {
       loadedModel = gltf.scene;
-      
+
       loadedModel.traverse((child) => {
         if (child.isMesh) {
           child.material.side = THREE.DoubleSide;
@@ -105,32 +107,56 @@ function init() {
 }
 
 function updatePumpColors() {
-    if (!loadedModel || !scene || props.pumps.length === 0) {
-        return;
+  if (!loadedModel || !scene || props.pumps.length === 0) {
+    return;
+  }
+
+  // Definisikan warna untuk Teks (Misal: Putih cerah biar kontras)
+  // Kamu bisa ganti hex-nya kalau mau warna lain (misal hitam: 0x000000)
+  const textColor = new THREE.Color(0xffffff);
+
+  props.pumps.forEach(pump => {
+    // Ambil ID dari data backend (Pastikan datanya "P-001", "P-002", dst)
+    const pumpId = pump.pumpId;
+
+    // --- BAGIAN 1: MEWARNAI BODY POMPA (P-001) ---
+    const pumpObject = loadedModel.getObjectByName(pumpId);
+
+    if (pumpObject) {
+      // Tentukan warna pompa (Hijau jika ON, Abu jika OFF)
+      const targetColor = pump.status === 'ON' ? colorOn : colorOff;
+
+      pumpObject.traverse((child) => {
+        if (child.isMesh && child.material) {
+          // Clone material supaya tidak impact ke objek lain
+          child.material = child.material.clone();
+          child.material.color.copy(targetColor);
+        }
+      });
+    } else {
+      console.warn(`Objek Body Pompa '${pumpId}' tidak ditemukan di 3D Model.`);
     }
 
-    props.pumps.forEach(pump => {
-        const objectNameInModel = pump.pumpId
-        if (!objectNameInModel) {
-            console.warn(`Tidak ada pemetaan nama untuk pumpId '${pump.pumpId}'`);
-            return;
-        }
+    // --- BAGIAN 2: MEWARNAI TEKS (P-001-Text) ---
+    // Sesuai format penamaanmu: ID + "-Text"
+    const textObjectName = `${pumpId}-Text`;
+    const textObject = loadedModel.getObjectByName(textObjectName);
 
-        const pumpObject = loadedModel.getObjectByName(objectNameInModel);
+    if (textObject) {
+      textObject.traverse((child) => {
+        if (child.isMesh && child.material) {
+          child.material = child.material.clone();
 
-        if (pumpObject) {
-            const targetColor = pump.status === 'ON' ? colorOn : colorOff;
-            
-            pumpObject.traverse((child) => {
-                if (child.isMesh && child.material) {
-                    child.material = child.material.clone();
-                    child.material.color.copy(targetColor);
-                }
-            });
-        } else {
-            console.warn(`Objek 3D dengan nama '${objectNameInModel}' tidak ditemukan di dalam model.`);
+          // OPSI A: Teks SELALU PUTIH (Recommended agar mudah dibaca)
+          child.material.color.copy(textColor);
+
+          // OPSI B: Kalau mau teksnya IKUTAN berubah warna (Hijau/Abu), 
+          // hapus baris Opsi A dan pakai baris di bawah ini:
+          // child.material.color.copy(targetColor);
         }
-    });
+      });
+    }
+  });
 }
 
 function animate() {
@@ -140,11 +166,11 @@ function animate() {
 }
 
 function onWindowResize() {
-    if (mountPoint.value && renderer) {
-        camera.aspect = mountPoint.value.clientWidth / mountPoint.value.clientHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(mountPoint.value.clientWidth, mountPoint.value.clientHeight);
-    }
+  if (mountPoint.value && renderer) {
+    camera.aspect = mountPoint.value.clientWidth / mountPoint.value.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(mountPoint.value.clientWidth, mountPoint.value.clientHeight);
+  }
 }
 
 onMounted(async () => {
@@ -157,11 +183,11 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', onWindowResize);
-  
+
   if (colorUpdateInterval) {
     clearInterval(colorUpdateInterval);
   }
-  
+
   if (renderer) {
     renderer.dispose();
     const canvas = renderer.domElement;
@@ -172,7 +198,7 @@ onUnmounted(() => {
 });
 
 watch(props.pumps, (newPumps) => {
-    updatePumpColors();
+  updatePumpColors();
 }, { deep: true });
 
 </script>

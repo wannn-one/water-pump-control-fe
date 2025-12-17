@@ -21,9 +21,21 @@
       </section>
 
       <section class="col-span-1 lg:col-span-4 flex flex-col xl:flex-row gap-6">
-        <section class="bg-card w-full h-full rounded-xl p-4 drop-shadow-2xl grid gap-6">
-          <h1 class="text-xl font-medium">Grafik Pembacaan Level Air</h1>
-          <Chart />
+        <section class="bg-card w-full h-full rounded-xl p-4 drop-shadow-2xl">
+          <h1 class="text-xl font-medium mb-4 border-b pb-2">Monitoring Realtime</h1>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 divide-y md:divide-y-0 md:divide-x divide-gray-200">
+
+            <div class="pr-0 md:pr-4">
+              <h2 class="text-sm font-bold text-gray-500 mb-2">Grafik Level Air</h2>
+              <Chart />
+            </div>
+            <div class="pt-4 md:pt-0 pl-0 md:pl-4">
+              <h2 class="text-sm font-bold text-gray-500 mb-2">Grafik Pompa Aktif</h2>
+              <ActivePumpChart />
+            </div>
+
+          </div>
         </section>
         <section class="bg-card min-w-[300px] xl:min-w-[615px] h-full rounded-xl p-4 drop-shadow-2xl relative">
           <Schema :pumps="pumps" :tank="tank" :systemCondition="systemCondition" />
@@ -70,7 +82,8 @@
                 <td class="border border-main p-2">{{ (currentPage - 1) * pageSize + index + 1 }}</td>
                 <td class="border border-main p-2">{{ new Date(item.timestamp).toLocaleString('id-ID', {
                   dateStyle:
-                    'short', timeStyle: 'medium' }) }}</td>
+                    'short', timeStyle: 'medium'
+                }) }}</td>
                 <td class="border border-main p-2 font-semibold">{{ item.level.toFixed(2) }}</td>
                 <td class="border border-main p-2">
                   <span class="px-2 py-1 text-xs font-bold rounded-full" :class="getConditionClass(item.level)">
@@ -123,7 +136,8 @@
               <tr v-else v-for="log in actionLogs" :key="log._id" class="hover:bg-gray-50">
                 <td class="border border-main p-2">{{ new Date(log.timestamp).toLocaleString('id-ID', {
                   dateStyle:
-                    'short', timeStyle: 'medium' }) }}</td>
+                    'short', timeStyle: 'medium'
+                }) }}</td>
                 <td class="border border-main p-2">
                   <span class="px-2 py-1 text-xs font-bold rounded-full"
                     :class="log.source === 'USER_DASHBOARD' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'">
@@ -169,6 +183,7 @@ import Chart from "./components/Chart.vue";
 import Pump from "./components/Pump.vue";
 import Schema from "./components/Schema.vue";
 import ModeToggle from './components/partials/ModeToggle.vue';
+import ActivePumpChart from './components/ActivePumpChart.vue';
 
 const systemStatus = ref(null);
 const isLoading = ref(true);
