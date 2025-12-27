@@ -34,7 +34,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
   pump: {
@@ -45,28 +45,22 @@ const props = defineProps({
 
 const emit = defineEmits(['toggle']);
 
-// --- LOGIKA 1: ACTUAL (Jujur) ---
-// Digunakan untuk Lampu Indikator & Animasi Gambar
-// Dia hanya akan berubah kalau props dari Parent (Backend) sudah update.
+// --- LOGIKA 1: ACTUAL / REAL (Indikator) ---
+// Indikator HANYA nyala kalau Backend bilang ON.
 const isIndicatorOn = computed(() => props.pump.status === 'ON');
 
 
-// --- LOGIKA 2: OPTIMISTIC (Cepat) ---
-// Digunakan KHUSUS untuk Tombol Toggle saja.
-// Kita bikin variabel lokal 'localStatus' untuk menyimpan status tombol saat ini.
+// --- LOGIKA 2: MANUAL BUTTON (Optimistic) ---
+// Kita inisialisasi status tombol dengan status awal, TAPI...
+// Kita TIDAK pasang 'watch' ke props. 
+// Efeknya: Kalau tiba-tiba sistem AUTO menyalakan pompa (props berubah jadi ON), 
+// tombol ini bakal CUEK saja (tetap OFF), sesuai permintaanmu.
 const localStatus = ref(props.pump.status);
 
-// Watcher: Kalau Backend update (polling), kita sinkronkan tombolnya juga
-// Biar kalau ada perubahan dari otomatis, tombolnya gak ketinggalan.
-watch(() => props.pump.status, (newStatus) => {
-  localStatus.value = newStatus;
-});
-
-// Computed untuk class CSS tombol
 const isButtonOn = computed(() => localStatus.value === 'ON');
 
 function togglePump() {
-  // 1. Ubah tampilan tombol SEKETIKA (Optimistic UI)
+  // 1. Ubah tampilan tombol SEKETIKA (Optimistic UI) saat diklik user
   localStatus.value = localStatus.value === 'ON' ? 'OFF' : 'ON';
 
   // 2. Kirim request ke backend via parent
@@ -75,7 +69,7 @@ function togglePump() {
 </script>
 
 <style>
-/* Style tambahan jika bg-ongreen/secondary belum ada di Tailwind config */
+/* Style Helper jika belum ada di Tailwind */
 .bg-ongreen {
   background-color: #22c55e;
 }
